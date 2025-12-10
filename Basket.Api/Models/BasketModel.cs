@@ -2,7 +2,7 @@
 
 namespace Basket.Api.Models;
 
-public class BasketLine
+public class BasketLineModel
 {
     public Guid LineId { get; init; } = Guid.NewGuid();
     public string Sku { get; init; }
@@ -18,10 +18,10 @@ public class BasketLine
     public decimal LineSubtotal => EffectiveUnitPrice * Quantity;
 }
 
-public class Basket
+public class BasketModel
 {
     public Guid BasketId { get; init; } = Guid.NewGuid();
-    public List<BasketLine> Lines { get; } = new();
+    public List<BasketLineModel> Lines { get; } = new();
     public DiscountCodeDto? DiscountCode { get; set; }
     public string ShippingCountry { get; set; } = "UK";
 }

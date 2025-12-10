@@ -5,7 +5,7 @@ namespace Basket.Api.Mapping;
 
 public static class BasketMapper
 {
-    public static BasketResponseDto ToDto(this Models.Basket basket)
+    public static BasketResponseDto ToDto(this BasketModel basket)
     {
         return new BasketResponseDto(
             BasketId: basket.BasketId,

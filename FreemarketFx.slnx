@@ -1,3 +1,5 @@
 <Solution>
+  <Project Path="Basket.Api.IntegrationTests/Basket.Api.IntegrationTests.csproj" Id="d8277c75-0164-404d-b7a1-d17612ef4cf7" />
+  <Project Path="Basket.Api.Tests/Basket.Api.Tests.csproj" Id="0e91dd8d-f61e-46ef-8570-387aea599e0f" />
   <Project Path="Basket.Api/Basket.Api.csproj" />
 </Solution>

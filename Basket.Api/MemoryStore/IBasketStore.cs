@@ -1,9 +1,11 @@
-﻿namespace Basket.Api.MemoryStore;
+﻿using Basket.Api.Models;
+
+namespace Basket.Api.MemoryStore;
 
 public interface IBasketStore
 {
-    Models.Basket GetOrCreate(Guid id);
-    bool TryGet(Guid id, out Models.Basket basket);
-    void Save(Models.Basket basket);
+    BasketModel GetOrCreate(Guid id);
+    bool TryGet(Guid id, out BasketModel basket);
+    void Save(BasketModel basket);
     void Delete(Guid id);
 }

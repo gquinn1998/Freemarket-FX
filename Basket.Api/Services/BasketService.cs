@@ -9,10 +9,22 @@ public class BasketService : IBasketService
     private readonly IBasketStore _store;
     public BasketService(IBasketStore store) => _store = store;
 
-    public Models.Basket GetOrCreate(Guid id) => _store.GetOrCreate(id);
+    public BasketModel GetOrCreate(Guid id) => _store.GetOrCreate(id);
 
     public void AddItem(Guid basketId, AddItemDto dto)
     {
+        if (dto is null)
+            throw new ArgumentNullException(nameof(dto));
+
+        if (dto.Quantity <= 0)
+            return;
+
+        if (dto.UnitPrice < 0)
+            throw new ArgumentOutOfRangeException(nameof(dto.UnitPrice));
+
+        if (string.IsNullOrWhiteSpace(dto.Sku))
+            throw new ArgumentException("SKU cannot be empty.", nameof(dto.Sku));
+
         var basket = _store.GetOrCreate(basketId);
 
         // try to find existing line with same SKU and same effective price
@@ -21,7 +33,7 @@ public class BasketService : IBasketService
         if (existing != null) existing.Quantity += dto.Quantity;
         else
         {
-            basket.Lines.Add(new BasketLine
+            basket.Lines.Add(new BasketLineModel
             {
                 Sku = dto.Sku,
                 Name = dto.Name,
@@ -73,7 +85,8 @@ public class BasketService : IBasketService
 
     public BasketTotalsModel GetTotals(Guid basketId, bool includeVat)
     {
-        if (!_store.TryGet(basketId, out var basket)) throw new KeyNotFoundException("Basket not found");
+        if (!_store.TryGet(basketId, out var basket))
+            throw new KeyNotFoundException("Basket not found");
 
         decimal subtotal = 0m;
         decimal discountedItemsTotal = 0m;
@@ -87,7 +100,7 @@ public class BasketService : IBasketService
         }
 
         decimal discountFromCode = 0m;
-        if (basket.DiscountCode != null)
+        if (basket.DiscountCode != null && basket.DiscountCode.Percent > 0)
         {
             // discount applies only to non-discounted items
             discountFromCode = Math.Round(nonDiscountedTotal * (basket.DiscountCode.Percent / 100m), 2, MidpointRounding.AwayFromZero);
@@ -95,24 +108,43 @@ public class BasketService : IBasketService
 
         decimal subtotalAfterCode = subtotal - discountFromCode;
 
-        decimal shipping = ComputeShipping(basket.ShippingCountry, subtotalAfterCode);
+        // -------------------------------
+        // 🚀 FREE SHIPPING OVERRIDE
+        // -------------------------------
+        decimal shipping;
 
-        // VAT: compute VATable amounts (assume all items are VATable except IsVatExempt lines). For shipping assume it's VATable.
+        if (basket.DiscountCode?.Code.Equals("FREESHIP", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            shipping = 0m;
+        }
+        else
+        {
+            shipping = ComputeShipping(basket.ShippingCountry, subtotalAfterCode);
+        }
+        // -------------------------------
+
+        // VAT
         decimal vat = 0m;
-        // compute VAT on item lines
+
         foreach (var line in basket.Lines)
         {
             var lineTotal = line.LineSubtotal;
-            // if discount code applies to this line (i.e., not IsDiscountedItem), proportionally reduce VAT base
+
             decimal lineDiscount = 0m;
+
             if (basket.DiscountCode != null && !line.IsDiscountedItem && nonDiscountedTotal > 0)
             {
-                // proportional share of code discount
-                lineDiscount = Math.Round(discountFromCode * (line.LineSubtotal / nonDiscountedTotal), 2, MidpointRounding.AwayFromZero);
+                lineDiscount = Math.Round(
+                    discountFromCode * (line.LineSubtotal / nonDiscountedTotal),
+                    2,
+                    MidpointRounding.AwayFromZero
+                );
             }
+
             var lineTaxable = line.IsVatExempt ? 0m : (lineTotal - lineDiscount);
             vat += Math.Round(lineTaxable * 0.20m, 2, MidpointRounding.AwayFromZero);
         }
+
         // shipping VAT
         vat += Math.Round(shipping * 0.20m, 2, MidpointRounding.AwayFromZero);
 
@@ -128,7 +160,7 @@ public class BasketService : IBasketService
         };
     }
 
-    public bool TryGetBasket(Guid basketId, out Models.Basket basket) => _store.TryGet(basketId, out basket);
+    public bool TryGetBasket(Guid basketId, out BasketModel basket) => _store.TryGet(basketId, out basket);
 
 
     private decimal ComputeShipping(string country, decimal subtotalAfterDiscount)
